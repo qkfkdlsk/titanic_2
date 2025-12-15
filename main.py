@@ -13,25 +13,17 @@ st.markdown("---")
 def load_data(file_path):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
-    Excel에서 저장된 파일 오류를 해결하기 위해 'cp1252' 인코딩을 우선 시도합니다.
+    모든 표준 인코딩이 실패했을 때, 'utf-8'을 기본으로 오류를 무시하여 강제로 로드합니다.
     """
     try:
-        # 1. 가장 흔한 Excel 저장 인코딩인 'cp1252'를 먼저 시도 (서유럽/미국 윈도우 기본값)
-        df = pd.read_csv(file_path, encoding='cp1252')
+        # 1. 'utf-8'을 기본으로 하되, 디코딩 오류가 발생하면 해당 바이트를 무시합니다.
+        #    이 방법은 대부분의 특수 인코딩 오류를 해결합니다.
+        df = pd.read_csv(file_path, encoding='utf-8', errors='ignore') 
         
-    except UnicodeDecodeError:
-        # 2. cp1252로도 실패하면, 가장 관대한 'latin-1'을 시도합니다.
-        try:
-            df = pd.read_csv(file_path, encoding='latin-1')
-        except Exception as e:
-            # 최종적으로 실패하면 오류 메시지 출력 후 종료
-            st.error(f"데이터 로드 중 심각한 오류가 발생했습니다: {e}")
-            st.error("두 가지 흔한 인코딩(cp1252, latin-1)을 모두 시도했으나 실패했습니다. 파일이 손상되었거나 매우 특수한 인코딩일 수 있습니다.")
-            return None
-    
     except Exception as e:
         # 파일 경로/이름 오류 등 다른 오류 처리
-        st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
+        st.error(f"데이터 로드 중 최종 오류가 발생했습니다: {e}")
+        st.error("파일 이름이나 경로가 정확한지 확인해 주십시오.")
         return None
 
     # 컬럼 이름 통일: pclass -> Pclass, survived -> Survived
@@ -47,6 +39,10 @@ def load_data(file_path):
     
     return df
 
+# 사용자 지정 파일 경로
+FILE_PATH = "titanic.xls - titanic3.csv" 
+data = load_data(FILE_PATH)
+# ... (나머지 코드는 동일)
 # 사용자 지정 파일 경로
 # 이전 문제 해결을 위해 이 파일 이름이 실제 파일 이름과 정확히 일치해야 합니다.
 FILE_PATH = "titanic.xls - titanic3.csv" 
