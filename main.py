@@ -13,19 +13,28 @@ st.markdown("---")
 def load_data(file_path):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
-    인코딩 오류 해결을 위해 'encoding='latin-1''을 사용합니다.
+    Excel에서 저장된 파일 오류를 해결하기 위해 'cp1252' 인코딩을 우선 시도합니다.
     """
     try:
-        # 대부분의 Excel에서 생성된 CSV 파일 오류를 해결하는 인코딩 사용
-        df = pd.read_csv(file_path, encoding='latin-1') 
+        # 1. 가장 흔한 Excel 저장 인코딩인 'cp1252'를 먼저 시도 (서유럽/미국 윈도우 기본값)
+        df = pd.read_csv(file_path, encoding='cp1252')
+        
+    except UnicodeDecodeError:
+        # 2. cp1252로도 실패하면, 가장 관대한 'latin-1'을 시도합니다.
+        try:
+            df = pd.read_csv(file_path, encoding='latin-1')
+        except Exception as e:
+            # 최종적으로 실패하면 오류 메시지 출력 후 종료
+            st.error(f"데이터 로드 중 심각한 오류가 발생했습니다: {e}")
+            st.error("두 가지 흔한 인코딩(cp1252, latin-1)을 모두 시도했으나 실패했습니다. 파일이 손상되었거나 매우 특수한 인코딩일 수 있습니다.")
+            return None
+    
     except Exception as e:
-        # 혹시 'latin-1'으로도 안 될 경우를 대비한 오류 메시지
-        st.error(f"데이터 로드 중 오류가 발생했습니다. (인코딩 시도 실패): {e}")
-        st.error("혹시 파일에 한글이 포함되어 있다면 'euc-kr' 또는 'cp949'로 변경하여 시도해 보세요.")
+        # 파일 경로/이름 오류 등 다른 오류 처리
+        st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
         return None
 
     # 컬럼 이름 통일: pclass -> Pclass, survived -> Survived
-    # 'titanic.xls - titanic3.csv' 파일은 소문자로 되어 있어 통일합니다.
     df.columns = [col.lower() for col in df.columns]
     df.rename(columns={'pclass': 'Pclass', 'survived': 'Survived'}, inplace=True)
     
@@ -39,14 +48,16 @@ def load_data(file_path):
     return df
 
 # 사용자 지정 파일 경로
-FILE_PATH = "titanic.xls - titanic3.csv.csv" # 파일 이름이 'titanic.xls - titanic3.csv'로 변경되었습니다
+# 이전 문제 해결을 위해 이 파일 이름이 실제 파일 이름과 정확히 일치해야 합니다.
+FILE_PATH = "titanic.xls - titanic3.csv" 
 data = load_data(FILE_PATH)
 
 if data is not None:
     st.header("📋 원본 데이터 미리보기")
     st.dataframe(data.head())
     st.markdown("---")
-
+    # ... (나머지 Pclass 및 Age 분석 코드는 동일)
+    
     ## 1. Pclass별 생존자 비율 분석
     st.header("1️⃣ Pclass (객실 등급)별 생존자 비율")
 
