@@ -1,43 +1,55 @@
+네, 알겠습니다. 방금 말씀해주신 한글 폰트 설정 코드와 그동안 여러 차례 수정하며 오류를 해결했던 데이터 로드, BOM 제거, 컬럼 정리 로직을 모두 합친 최종 app.py 코드를 작성해 드리겠습니다.
+
+이제 이 코드는 파일 이름/경로, 인코딩, 파싱, BOM 문제, 그리고 한글 깨짐 문제까지 모두 해결할 수 있습니다.
+
+🚨 중요 사항:
+
+파일 이름: 데이터 파일의 이름을 **titanic3.csv**로 변경했다고 가정하고 코드를 작성했습니다. 실제 파일 이름이 다르다면, 코드 상단의 FILE_PATH 변수만 수정해 주세요.
+
+폰트 설치: Linux 기반 환경(예: 클라우드 서버)에서 실행한다면, 코드의 주석에 안내된 대로 나눔고딕 폰트가 설치되어 있어야 한글이 정상 출력됩니다.
+
+🚀 app.py 최종 완성 코드 (한글 폰트 포함)
+Python
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# ⭐⭐⭐ 한글 폰트 설정 (Windows, macOS, Linux 환경별 대응) ⭐⭐⭐
 import platform
 from matplotlib import font_manager, rc
 
+# ⭐⭐⭐ 1. 한글 폰트 설정 (그래프 한글 깨짐 방지) ⭐⭐⭐
 # 시스템 환경에 따라 폰트 경로 설정
 if platform.system() == 'Darwin': # macOS
     rc('font', family='AppleGothic')
 elif platform.system() == 'Windows': # Windows
     font_name = font_manager.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
     rc('font', family=font_name)
-elif platform.system() == 'Linux': # Linux (Colab, 서버 등)
-    # 나눔 폰트가 설치되어 있지 않다면 설치가 필요합니다.
-    # Colab에서 실행 시: !sudo apt-get install -y fonts-nanum
-    # 일반 Linux 서버: sudo apt-get install -y fonts-nanum-extra
-    rc('font', family='NanumGothic')
+elif platform.system() == 'Linux': # Linux (클라우드 서버 등)
+    # Linux 환경에서는 NanumGothic 폰트가 설치되어 있어야 합니다.
+    try:
+        rc('font', family='NanumGothic')
+    except:
+        # 폰트가 없을 경우 경고 메시지 출력 (필요하다면 터미널에서 설치 필요)
+        st.warning("경고: Linux 환경에서 NanumGothic 폰트 설정을 실패했습니다. 한글이 깨질 수 있습니다.")
 
 # 마이너스 부호 깨짐 방지
 plt.rcParams['axes.unicode_minus'] = False 
-# ⭐⭐⭐ 여기까지 폰트 설정 코드 추가 ⭐⭐⭐
+# ⭐⭐⭐ 폰트 설정 끝 ⭐⭐⭐
 
 st.title("🚢 타이타닉 생존자 분석 (Pclass 및 Age)")
 st.markdown("---")
 
-# 사용자 지정 파일 경로를 가장 안전한 이름으로 설정합니다.
-# 🚨 파일 이름을 'titanic3.csv'로 변경했다면, 이 이름이 정확해야 합니다.
+# 🚨 파일 이름 설정 (1단계에서 'titanic3.csv'로 변경했다고 가정)
 FILE_PATH = "titanic3.csv" 
 
-# 데이터 로드 및 전처리 (최종 진단 버전)
+# ⭐⭐⭐ 2. 데이터 로드 및 전처리 함수 (인코딩/구분자/BOM 문제 해결) ⭐⭐⭐
 @st.cache_data
 def load_data(file_path):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
-    인코딩 및 파싱 오류를 해결하기 위해 다중 인코딩/구분자를 시도하고,
-    BOM 제거 및 KeyError 방지를 위한 컬럼 정리 로직을 포함합니다.
+    다중 인코딩/구분자를 시도하고, BOM 제거 및 KeyError 방지를 위한 컬럼 정리 로직을 포함합니다.
     """
     ENCODINGS = ['cp1252', 'latin-1', 'utf-8']
     DELIMITERS = [',', ';', '\t']
@@ -47,7 +59,6 @@ def load_data(file_path):
     for encoding in ENCODINGS:
         for delimiter in DELIMITERS:
             try:
-                # Python 엔진 사용 및 구분자/인코딩 시도
                 df = pd.read_csv(file_path, encoding=encoding, sep=delimiter, engine='python')
                 
                 if df.shape[1] >= 10 and not df.empty:
@@ -57,7 +68,6 @@ def load_data(file_path):
             except (UnicodeDecodeError, pd.errors.ParserError):
                 continue
             except FileNotFoundError:
-                # 파일 경로/이름 오류가 발생하면, 다른 시도는 할 필요 없으므로 바로 반환
                 st.error(f"❌ 파일 경로/이름 오류: '{file_path}' 파일을 찾을 수 없습니다. 경로를 확인하십시오.")
                 return None
             except Exception as e:
@@ -70,13 +80,12 @@ def load_data(file_path):
         st.error("💔 로드 실패: 모든 인코딩/구분자 시도에도 불구하고 파일을 읽을 수 없거나 데이터가 비어있습니다.")
         return None
 
-    # ⬇️⬇️⬇️ 이 부분이 사용자님께서 찾으시던 전처리 로직입니다. ⬇️⬇️⬇️
     # --- 데이터 전처리 시작 (BOM 및 KeyError 방지) ---
     
-    # ⭐ 핵심 수정 1: BOM 문자열 제거 (컬럼명 'ï»¿pclass' 문제 해결)
+    # BOM 문자열 제거 (컬럼명 'ï»¿pclass' 문제 해결)
     df.columns = df.columns.str.replace('ï»¿', '', regex=False)
     
-    # 기존 로직: 컬럼 이름의 공백 제거 및 소문자화 
+    # 컬럼 이름의 공백 제거 및 소문자화 
     df.columns = [col.strip().lower() for col in df.columns]
     
     # 분석에 사용할 필수 컬럼 정의
@@ -91,7 +100,7 @@ def load_data(file_path):
         else:
             missing_cols.append(lower_name)
 
-    # 최종 진단: 필수 컬럼이 누락된 경우, 실제 컬럼 목록을 출력
+    # 최종 진단: 필수 컬럼이 누락된 경우 출력
     if missing_cols:
         st.error(f"⚠️ **분석 실패:** 필수 컬럼이 데이터에 없습니다.")
         st.error(f"누락된 필수 컬럼(소문자 기준): {', '.join(missing_cols)}")
@@ -107,8 +116,9 @@ def load_data(file_path):
     df['Pclass'] = df['Pclass'].fillna(3).astype(int)
     
     return df
-    # ⬆️⬆️⬆️ load_data 함수의 끝입니다. ⬆️⬆️⬆️
+# ⭐⭐⭐ load_data 함수 끝 ⭐⭐⭐
 
+# 메인 실행
 data = load_data(FILE_PATH)
 
 if data is not None:
@@ -137,7 +147,8 @@ if data is not None:
     st.header("2️⃣ Age (나이) 그룹별 생존자 비율")
 
     bins = [0, 12, 18, 35, 60, 100]
-    labels = ['Child (0-11)', 'Teen (12-17)', 'Young Adult (18-34)', 'Adult (35-59)', 'Senior (60+)']
+    labels = ['어린이 (0-11)', '청소년 (12-17)', '청년 (18-34)', '성인 (35-59)', '노년 (60+)']
+    # 폰트 설정을 테스트하기 위해 labels를 한글로 변경했습니다.
     data['AgeGroup'] = pd.cut(data['Age'], bins=bins, labels=labels, right=False, include_lowest=True)
 
     age_survival = data.groupby('AgeGroup', observed=True)['Survived'].agg(['sum', 'count']).reset_index()
@@ -148,7 +159,7 @@ if data is not None:
     
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.barplot(x='AgeGroup', y='Survival Rate (%)', data=age_survival, palette='plasma', ax=ax)
-    ax.set_title('Survival Rate by Age Group', fontsize=16)
+    ax.set_title('Survival Rate by Age Group (나이 그룹별 생존율)', fontsize=16)
     ax.set_xlabel('Age Group (나이 그룹)', fontsize=12)
     ax.set_ylabel('Survival Rate (%) (생존 비율)', fontsize=12)
     plt.xticks(rotation=45, ha='right')
