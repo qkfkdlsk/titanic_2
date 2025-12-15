@@ -11,15 +11,15 @@ st.markdown("---")
 
 # 데이터 로드 및 전처리
 @st.cache_data
-def load_data(file_path):
+def load_data('titanic.xls'):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
     """
     try:
         # 파일 로드 (titanic3.csv는 인덱스 컬럼 없이 로드)
-        df = pd.read_csv(file_path)
+        df = pd.read_csv('titanic.xls')
     except FileNotFoundError:
-        st.error(f"오류: 파일 '{file_path}'를 찾을 수 없습니다. 파일 이름을 확인하십시오.")
+        st.error(f"오류: 파일 '{titanic.xls}'를 찾을 수 없습니다. 파일 이름을 확인하십시오.")
         return None
     except Exception as e:
         st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
