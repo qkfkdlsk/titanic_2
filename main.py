@@ -65,7 +65,7 @@ def load_data(file_path):
 
 # 사용자 지정 파일 경로
 # 파일 이름을 변경했다면 아래를 수정하십시오! (예: "titanic3.csv")
-FILE_PATH = "titanic.csv" 
+FILE_PATH = "titanic3.csv" 
 data = load_data(FILE_PATH)
 
 if data is not None:
