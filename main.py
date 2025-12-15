@@ -1,3 +1,4 @@
+pip install -r requirements.txt
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -96,3 +97,4 @@ if data is not None:
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     st.pyplot(fig)
+    streamlit run app.py
