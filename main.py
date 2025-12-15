@@ -39,7 +39,7 @@ def load_data(file_path):
     return df
 
 # 사용자 지정 파일 경로
-FILE_PATH = "titanic.xls - titanic3.csv" # 파일 이름이 'titanic.xls - titanic3.csv'로 변경되었습니다
+FILE_PATH = "titanic.xls - titanic3.csv.csv" # 파일 이름이 'titanic.xls - titanic3.csv'로 변경되었습니다
 data = load_data(FILE_PATH)
 
 if data is not None:
