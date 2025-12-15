@@ -11,7 +11,7 @@ st.markdown("---")
 
 # 데이터 로드 및 전처리
 @st.cache_data
-def load_data('titanic.xls'):
+def load_data(titanic.xls):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
     """
