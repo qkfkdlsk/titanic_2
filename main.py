@@ -1,4 +1,3 @@
-
 Python
 
 import streamlit as st
@@ -9,23 +8,27 @@ import seaborn as sns
 import platform
 from matplotlib import font_manager, rc
 
-# ⭐⭐⭐ 1. 한글 폰트 설정 (그래프 한글 깨짐 방지) ⭐⭐⭐
-# 시스템 환경에 따라 폰트 경로 설정
-if platform.system() == 'Darwin': # macOS
-    rc('font', family='AppleGothic')
-elif platform.system() == 'Windows': # Windows
-    font_name = font_manager.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
-    rc('font', family=font_name)
-elif platform.system() == 'Linux': # Linux (클라우드 서버 등)
-    # Linux 환경에서는 NanumGothic 폰트가 설치되어 있어야 합니다.
-    try:
+# ⭐⭐⭐ 1. 한글 폰트 설정 (안정화 버전) ⭐⭐⭐
+try:
+    if platform.system() == 'Darwin': # macOS
+        rc('font', family='AppleGothic')
+    elif platform.system() == 'Windows': # Windows
+        # Malgun Gothic 폰트 경로를 사용하여 폰트 이름 가져오기
+        font_name = font_manager.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
+        rc('font', family=font_name)
+    elif platform.system() == 'Linux': # Linux (클라우드 서버 등)
+        # NanumGothic 폰트 사용 시도
         rc('font', family='NanumGothic')
-    except:
-        # 폰트가 없을 경우 경고 메시지 출력 (필요하다면 터미널에서 설치 필요)
-        st.warning("경고: Linux 환경에서 NanumGothic 폰트 설정을 실패했습니다. 한글이 깨질 수 있습니다.")
+    
+    # 마이너스 부호 깨짐 방지
+    plt.rcParams['axes.unicode_minus'] = False 
+    st.info("✅ 그래프 폰트 설정을 완료했습니다.")
 
-# 마이너스 부호 깨짐 방지
-plt.rcParams['axes.unicode_minus'] = False 
+except Exception as e:
+    # 폰트 설정 중 오류가 발생하면 앱을 중단하지 않고 경고만 출력합니다.
+    st.error(f"❌ 폰트 설정 중 오류가 발생했습니다: {e}. 그래프 한글이 깨질 수 있습니다.")
+    st.info("참고: 폰트 파일이 시스템에 설치되어 있는지 확인해 주십시오.")
+
 # ⭐⭐⭐ 폰트 설정 끝 ⭐⭐⭐
 
 st.title("🚢 타이타닉 생존자 분석 (Pclass 및 Age)")
