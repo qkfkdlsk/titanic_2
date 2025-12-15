@@ -4,6 +4,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# ⭐⭐⭐ 한글 폰트 설정 (Windows, macOS, Linux 환경별 대응) ⭐⭐⭐
+import platform
+from matplotlib import font_manager, rc
+
+# 시스템 환경에 따라 폰트 경로 설정
+if platform.system() == 'Darwin': # macOS
+    rc('font', family='AppleGothic')
+elif platform.system() == 'Windows': # Windows
+    font_name = font_manager.FontProperties(fname="c:/Windows/Fonts/malgun.ttf").get_name()
+    rc('font', family=font_name)
+elif platform.system() == 'Linux': # Linux (Colab, 서버 등)
+    # 나눔 폰트가 설치되어 있지 않다면 설치가 필요합니다.
+    # Colab에서 실행 시: !sudo apt-get install -y fonts-nanum
+    # 일반 Linux 서버: sudo apt-get install -y fonts-nanum-extra
+    rc('font', family='NanumGothic')
+
+# 마이너스 부호 깨짐 방지
+plt.rcParams['axes.unicode_minus'] = False 
+# ⭐⭐⭐ 여기까지 폰트 설정 코드 추가 ⭐⭐⭐
+
 st.title("🚢 타이타닉 생존자 분석 (Pclass 및 Age)")
 st.markdown("---")
 
