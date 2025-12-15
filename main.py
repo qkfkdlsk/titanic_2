@@ -12,8 +12,7 @@ st.markdown("---")
 def load_data(file_path):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
-    인코딩 및 파싱 오류를 해결하기 위해 다중 인코딩/구분자를 시도하고,
-    KeyError 방지를 위해 컬럼 이름을 정리합니다.
+    다중 인코딩/구분자를 시도하고, KeyError 방지를 위해 컬럼 이름 정리 후 확인합니다.
     """
     ENCODINGS = ['cp1252', 'latin-1', 'utf-8']
     DELIMITERS = [',', ';', '\t']
@@ -28,57 +27,61 @@ def load_data(file_path):
                 
                 # 로드 성공 후, 컬럼 개수 확인 (Titanic 데이터는 약 14개 컬럼)
                 if df.shape[1] >= 10:
-                    st.success(f"데이터를 '{encoding}' 인코딩과 구분자 '{delimiter}'로 성공적으로 로드했습니다.")
+                    st.success(f"데이터 로드 성공: '{encoding}' 인코딩과 구분자 '{delimiter}' 사용")
                     break 
             except (UnicodeDecodeError, pd.errors.ParserError):
                 continue
-            except Exception as e:
-                # 파일 경로 오류 등
-                # st.error(f"데이터 로드 중 예상치 못한 오류 발생: {e}")
-                return None
+            except Exception:
+                continue
         if df is not None and df.shape[1] >= 10:
             break
     
     if df is None:
-        st.error("💔 로드 실패: 모든 시도에도 불구하고 파일을 읽을 수 없습니다. 파일의 인코딩/구분자를 수동으로 확인해 주십시오.")
+        st.error("💔 로드 실패: 모든 시도에도 불구하고 파일을 읽을 수 없습니다.")
         return None
 
     # --- 데이터 전처리 시작 (KeyError 방지) ---
     
-    # ⭐ 핵심 수정 1: 컬럼 이름의 공백 제거 및 소문자화
-    # DataFrame의 모든 컬럼 이름을 소문자로 만들고, 앞뒤 공백을 제거합니다.
+    # 컬럼 이름의 공백 제거 및 소문자화 (KeyError 방지 1)
     df.columns = [col.strip().lower() for col in df.columns]
     
-    # ⭐ 핵심 수정 2: 분석에 사용할 컬럼 이름 명확히 정의
+    # 분석에 사용할 필수 컬럼 정의
     required_cols = {'pclass': 'Pclass', 'survived': 'Survived', 'age': 'Age'}
     rename_map = {}
+    missing_cols = []
     
+    # 필수 컬럼이 모두 존재하는지 확인
     for lower_name, capitalized_name in required_cols.items():
         if lower_name in df.columns:
             rename_map[lower_name] = capitalized_name
         else:
-            st.error(f"Error: 필수 컬럼 '{lower_name}' (객실 등급, 생존 여부, 나이 중 하나)가 데이터에 없습니다.")
-            return None
-            
+            missing_cols.append(lower_name)
+
+    # ⭐ 핵심 디버그: 필수 컬럼이 누락된 경우, 실제 컬럼 목록을 출력
+    if missing_cols:
+        st.error(f"⚠️ **분석 실패:** 필수 컬럼이 데이터에 없습니다.")
+        st.error(f"누락된 필수 컬럼(소문자 기준): {', '.join(missing_cols)}")
+        st.write("---")
+        st.subheader("🧐 데이터 파일에 실제 존재하는 컬럼 목록:")
+        st.dataframe(pd.DataFrame({'Actual Columns': df.columns.tolist()}))
+        return None # 필수 컬럼이 없으므로 분석 중단
+    
+    # 컬럼 이름 변경 및 나머지 전처리
     df.rename(columns=rename_map, inplace=True)
     
-    # Age 결측치 처리 (중앙값으로 대체)
     df['Age'].fillna(df['Age'].median(), inplace=True)
-    
-    # Survived와 Pclass 컬럼을 정수형으로 변환
     df['Survived'] = df['Survived'].fillna(0).astype(int)
     df['Pclass'] = df['Pclass'].fillna(3).astype(int)
     
     return df
 
 # 사용자 지정 파일 경로
-# 🚨 파일 이름을 'titanic3.csv'로 변경했다면, 아래를 수정해야 합니다.
+# 파일 이름을 변경했다면 아래를 수정하십시오! (예: "titanic3.csv")
 FILE_PATH = "titanic.xls - titanic3.csv" 
-# 혹은 안전하게: FILE_PATH = "titanic3.csv"
-
 data = load_data(FILE_PATH)
 
 if data is not None:
+    # 이 아래 블록이 실행되면 분석 결과가 정상적으로 출력됩니다.
     st.header("📋 원본 데이터 미리보기")
     st.dataframe(data.head())
     st.markdown("---")
