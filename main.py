@@ -4,46 +4,51 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Streamlit 앱 제목 설정
 st.title("🚢 타이타닉 생존자 분석 (Pclass 및 Age)")
 st.markdown("---")
 
-# 데이터 로드 및 전처리 (다중 인코딩 및 Python 엔진 시도)
+# 데이터 로드 및 전처리 (다중 인코딩 및 다중 구분자 시도)
 @st.cache_data
 def load_data(file_path):
     """
     CSV 파일을 로드하고 필요한 전처리를 수행합니다.
-    인코딩 및 토큰화 오류를 해결하기 위해 다중 인코딩과 Python 엔진을 사용합니다.
+    인코딩 및 토큰화 오류를 해결하기 위해 다중 인코딩, Python 엔진, 다중 구분자를 사용합니다.
     """
-    # 콤마(,) 구분자와 파이썬 엔진을 사용하여 파싱 오류를 방지합니다.
-    # 인코딩 문제 해결을 위해 여러 인코딩을 순서대로 시도합니다.
-    ENCODINGS = ['cp1252', 'latin-1', 'ISO-8859-1', 'utf-8']
+    # Excel CSV 파일에서 흔히 발생하는 인코딩과 구분자를 정의합니다.
+    ENCODINGS = ['cp1252', 'latin-1', 'utf-8']
+    DELIMITERS = [',', ';', '\t']  # 콤마, 세미콜론, 탭
     df = None
     
+    # 모든 조합을 시도합니다.
     for encoding in ENCODINGS:
-        try:
-            # ⭐ 핵심 수정: engine='python'과 sep=',' 명시
-            # Python 엔진은 C 엔진보다 복잡한 CSV 구조에 더 강합니다.
-            df = pd.read_csv(file_path, encoding=encoding, sep=',', engine='python')
-            st.success(f"데이터를 '{encoding}' 인코딩과 Python 엔진으로 성공적으로 로드했습니다.")
-            break  # 로드에 성공하면 반복을 중단합니다.
-        except UnicodeDecodeError:
-            continue
-        except pd.errors.ParserError as pe:
-            # 토큰화 오류가 발생하더라도, 일단 인코딩을 계속 시도합니다.
-            # 하지만 Python 엔진 사용 시 이 오류는 발생하지 않을 가능성이 높습니다.
-            continue
-        except Exception as e:
-            # 기타 오류 처리
-            st.error(f"데이터 로드 중 예상치 못한 오류가 발생했습니다: {e}")
-            return None
-
+        for delimiter in DELIMITERS:
+            try:
+                # ⭐ 핵심 수정: engine='python', sep을 현재 구분자로 설정
+                # Python 엔진은 복잡한 CSV 구조에 강하며, 다양한 구분자를 시도합니다.
+                df = pd.read_csv(file_path, encoding=encoding, sep=delimiter, engine='python')
+                
+                # 데이터가 최소한의 구조를 갖는지 확인 (컬럼 수가 10개 이상인지 확인)
+                if df.shape[1] >= 10:
+                    st.success(f"데이터를 '{encoding}' 인코딩과 구분자 '{delimiter}'로 성공적으로 로드했습니다.")
+                    break  # 로드에 성공하면 반복을 중단합니다.
+                
+                # 만약 로드에 성공했으나 컬럼 수가 너무 적다면 (파싱 실패의 징후), 다음 시도로 넘어갑니다.
+            except (UnicodeDecodeError, pd.errors.ParserError):
+                continue
+            except Exception as e:
+                # 기타 오류 처리 (파일 경로 오류 등)
+                st.error(f"데이터 로드 중 예상치 못한 오류가 발생했습니다: {e}")
+                return None
+        if df is not None and df.shape[1] >= 10:
+            break
+    
     if df is None:
-        st.error("💔 로드 실패: 모든 시도(인코딩/파서)에도 불구하고 파일을 읽을 수 없습니다.")
-        st.error("해결책: 데이터 파일을 메모장이나 텍스트 편집기로 열어 내용을 확인하거나, **UTF-8 인코딩**으로 변환 후 다시 시도해 주십시오.")
+        st.error("💔 로드 실패: 시도한 모든 조합(인코딩/구분자)으로 파일을 읽을 수 없습니다.")
+        st.error("해결책: 데이터 파일을 메모장/VS Code로 열어 **UTF-8 인코딩**으로 '다른 이름으로 저장'하거나, 실제 구분자가 콤마나 세미콜론이 아닌지 확인해 주십시오.")
         return None
 
     # --- 데이터 전처리 시작 ---
+    
     # 컬럼 이름 통일: pclass -> Pclass, survived -> Survived
     df.columns = [col.lower() for col in df.columns]
     df.rename(columns={'pclass': 'Pclass', 'survived': 'Survived'}, inplace=True)
@@ -51,14 +56,16 @@ def load_data(file_path):
     # Age 결측치 처리 (중앙값으로 대체)
     df['Age'].fillna(df['Age'].median(), inplace=True)
     
-    # Survived와 Pclass 컬럼을 정수형으로 변환
-    df['Survived'] = df['Survived'].astype(int)
-    df['Pclass'] = df['Pclass'].astype(int)
+    # 'Survived'와 'Pclass' 컬럼을 정수형으로 변환 (NaN으로 인해 float으로 로드되었을 수 있음)
+    if 'Survived' in df.columns and 'Pclass' in df.columns:
+        df['Survived'] = df['Survived'].fillna(0).astype(int) # 결측치는 0으로 채우고 정수형으로 변환
+        df['Pclass'] = df['Pclass'].fillna(3).astype(int)     # 결측치는 3등석으로 채우고 정수형으로 변환
     
     return df
 
-# 사용자 지정 파일 경로 (이름이 정확한지 다시 한번 확인해 주세요)
-FILE_PATH = "titanic.xls - titanic3.csv" 
+# 사용자 지정 파일 경로
+# 파일 이름을 변경했다면 아래를 수정하십시오! (예: "titanic3.csv")
+FILE_PATH = "titanic.csv" 
 data = load_data(FILE_PATH)
 
 if data is not None:
@@ -66,8 +73,6 @@ if data is not None:
     st.dataframe(data.head())
     st.markdown("---")
 
-    # ... (나머지 Pclass 및 Age 분석 코드는 동일)
-    
     ## 1. Pclass별 생존자 비율 분석
     st.header("1️⃣ Pclass (객실 등급)별 생존자 비율")
 
