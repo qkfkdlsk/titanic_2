@@ -8,12 +8,17 @@ st.title("🚢 타이타닉 생존자 분석 (Pclass 및 Age)")
 st.markdown("---")
 
 # 사용자 지정 파일 경로를 가장 안전한 이름으로 설정합니다.
-# 🚨 파일 이름을 'titanic3.csv'로 변경했다고 가정하고 코드를 작성합니다.
+# 🚨 파일 이름을 'titanic3.csv'로 변경했다면, 이 이름이 정확해야 합니다.
 FILE_PATH = "titanic3.csv" 
 
 # 데이터 로드 및 전처리 (최종 진단 버전)
 @st.cache_data
 def load_data(file_path):
+    """
+    CSV 파일을 로드하고 필요한 전처리를 수행합니다.
+    인코딩 및 파싱 오류를 해결하기 위해 다중 인코딩/구분자를 시도하고,
+    BOM 제거 및 KeyError 방지를 위한 컬럼 정리 로직을 포함합니다.
+    """
     ENCODINGS = ['cp1252', 'latin-1', 'utf-8']
     DELIMITERS = [',', ';', '\t']
     df = None
@@ -22,6 +27,7 @@ def load_data(file_path):
     for encoding in ENCODINGS:
         for delimiter in DELIMITERS:
             try:
+                # Python 엔진 사용 및 구분자/인코딩 시도
                 df = pd.read_csv(file_path, encoding=encoding, sep=delimiter, engine='python')
                 
                 if df.shape[1] >= 10 and not df.empty:
@@ -31,10 +37,10 @@ def load_data(file_path):
             except (UnicodeDecodeError, pd.errors.ParserError):
                 continue
             except FileNotFoundError:
+                # 파일 경로/이름 오류가 발생하면, 다른 시도는 할 필요 없으므로 바로 반환
                 st.error(f"❌ 파일 경로/이름 오류: '{file_path}' 파일을 찾을 수 없습니다. 경로를 확인하십시오.")
                 return None
             except Exception as e:
-                # 기타 오류가 발생하면 즉시 사용자에게 보고하고 다음 시도
                 st.warning(f"경고: 로드 중 오류 발생 ({encoding}, {delimiter}): {e}")
                 continue
         if df is not None and df.shape[1] >= 10 and not df.empty:
@@ -44,20 +50,28 @@ def load_data(file_path):
         st.error("💔 로드 실패: 모든 인코딩/구분자 시도에도 불구하고 파일을 읽을 수 없거나 데이터가 비어있습니다.")
         return None
 
-    # --- 데이터 전처리 시작 (KeyError 방지) ---
+    # ⬇️⬇️⬇️ 이 부분이 사용자님께서 찾으시던 전처리 로직입니다. ⬇️⬇️⬇️
+    # --- 데이터 전처리 시작 (BOM 및 KeyError 방지) ---
+    
+    # ⭐ 핵심 수정 1: BOM 문자열 제거 (컬럼명 'ï»¿pclass' 문제 해결)
+    df.columns = df.columns.str.replace('ï»¿', '', regex=False)
+    
+    # 기존 로직: 컬럼 이름의 공백 제거 및 소문자화 
     df.columns = [col.strip().lower() for col in df.columns]
     
+    # 분석에 사용할 필수 컬럼 정의
     required_cols = {'pclass': 'Pclass', 'survived': 'Survived', 'age': 'Age'}
     rename_map = {}
     missing_cols = []
     
+    # 필수 컬럼이 모두 존재하는지 확인
     for lower_name, capitalized_name in required_cols.items():
         if lower_name in df.columns:
             rename_map[lower_name] = capitalized_name
         else:
             missing_cols.append(lower_name)
 
-    # ⭐ 최종 진단: 필수 컬럼이 누락된 경우, 실제 컬럼 목록을 출력
+    # 최종 진단: 필수 컬럼이 누락된 경우, 실제 컬럼 목록을 출력
     if missing_cols:
         st.error(f"⚠️ **분석 실패:** 필수 컬럼이 데이터에 없습니다.")
         st.error(f"누락된 필수 컬럼(소문자 기준): {', '.join(missing_cols)}")
@@ -73,6 +87,7 @@ def load_data(file_path):
     df['Pclass'] = df['Pclass'].fillna(3).astype(int)
     
     return df
+    # ⬆️⬆️⬆️ load_data 함수의 끝입니다. ⬆️⬆️⬆️
 
 data = load_data(FILE_PATH)
 
